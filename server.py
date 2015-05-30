@@ -15,6 +15,7 @@ import re, datetime
 import urllib2, urllib
 import requests, chartkick
 from flask_oauthlib.client import OAuth
+import hashlib
  
 import logging
 from logging.handlers import SMTPHandler
@@ -44,6 +45,35 @@ ck = Blueprint('ck_page', __name__, static_folder=chartkick.js(), static_url_pat
 app.register_blueprint(ck, url_prefix='/ck')
 app.jinja_env.add_extension("chartkick.ext.charts")
 
+oauth = OAuth(app)
+
+from twitter import CONSUMER_KEY, CONSUMER_SECRET
+
+twitter = oauth.remote_app(
+	'twitter',
+	consumer_key= CONSUMER_KEY,
+	consumer_secret= CONSUMER_SECRET,
+	base_url='https://api.twitter.com/1.1/',
+	request_token_url='https://api.twitter.com/oauth/request_token',
+	access_token_url='https://api.twitter.com/oauth/access_token',
+	authorize_url='https://api.twitter.com/oauth/authorize',
+)
+
+
+@twitter.tokengetter
+def get_twitter_token():
+	if 'twitter_oauth' in session:
+		resp = session['twitter_oauth']
+		return resp['oauth_token'], resp['oauth_token_secret']
+
+
+@app.before_request
+def before_request():
+	g.user = None
+	if 'twitter_oauth' in session:
+		g.user = session['twitter_oauth']
+		print g.user
+
 def tup2float(tup):
 	return float('.'.join(str(x) for x in tup))
 
@@ -60,10 +90,196 @@ def page_not_found(e):
 def screen():
 	return render_template('index.djt')
 
+# @app.route('/placeorder')
+# def placeorder():
+
+@app.route('/restaurant/<id>')
+def restaurant(id=None):
+	return render_template('restaurant.djt')
+
+@app.route('/registerRestaurant', methods=['GET', 'POST'])
+def registerRestaurant():
+	if request.method == 'POST':
+		db = get_cursor()
+		noQry = 'select count(*) from restaurant'
+		db.execute(noQry)
+		count = db.fetchone()[0]
+		print count
+		res_id = int(count) + 1
+		resname = request.form['resname']
+		location = request.form['location']
+		city = request.form['city']
+		state = request.form['state']
+		status = 0 # Closed by default
+		rating = 0
+		serv_type = request.form['serv_type']
+		no_people_visited = 0
+		no_people_liked = 0
+		pure_veg = request.form['pure_veg']
+		password = request.form['password']
+		# res_id = int(count) + 1
+		# resname = "Taj Krishna"
+		# location = "Banjara Hilla"
+		# city = "Hyderabad"
+		# state = "Telangana"
+		# status = 0 # Closed by default
+		# rating = 0
+		# serv_type = "Dining, Take Away"
+		# no_people_visited = 0
+		# no_people_liked = 0
+		# pure_veg = 1
+		# password = "root"
+		# insertQuery = 'INSERT INTO `restaurant` (`res_id`, `res_name`, `location`, `city`, `state`, `status`, `rating`, `serv_type`, `no_people_visited`, `no_people_liked`, `pure_veg`, `password`) VALUES ("%s","%s","%s","%s","%s","%s","%s","%s","%s","%s")'
+		Query1 = "INSERT INTO `restaurant`(`res_id`, `res_name`, `location`, `city`, `state`, `status`, `rating`, `serv_type`, `no_people_visited`, `no_people_liked`, `pure_veg`, `password`) VALUES ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', MD5('%s'))"%(str(res_id),resname,location,city,state,str(status),str(rating),serv_type,str(no_people_visited), str(no_people_liked), str(pure_veg), password)
+		Query = "INSERT INTO `restaurant`(`res_id`, `res_name`, `location`, `city`, `state`, `status`, `rating`, `serv_type`, `no_people_visited`, `no_people_liked`, `pure_veg`, `password`) VALUES ('1', 'test', 'no', 'no2', 'no3', '1', '0', 'dine-in', '0', '0', '1', MD5('test'))"
+		db.execute(Query1)
+		db.execute("COMMIT")
+		print "restaurant entry success !"
+		return render_template('restaurantSuccess.djt', password=password, res_id=res_id)
+	return render_template('registerRestaurant.djt')
+
+
+@app.route('/dashboard')
+def dashboard():
+	db = get_cursor()
+	sql = 'select * from user_login where username="%s"'%app.config['USERNAME']
+	db.execute(sql)
+	names = db.fetchone()
+	imageUrl = hashlib.md5(names[2]).hexdigest()
+	return render_template('dashboard.djt', names=names, imageUrl=imageUrl)
+
+@app.route('/signup', methods=['GET','POST'])
+def signup():
+	if request.method == 'POST':
+		db = get_cursor()
+		username = request.form['username']
+		password = request.form['password']
+		confpass = request.form['confirmpassword']
+		email = request.form['email']
+		userType = 1
+		firstName = request.form['fname']
+		lastName = request.form['lname']
+		height = request.form['height']
+		weight = request.form['weight']
+		phone = request.form['phone']
+		addr = request.form['address']
+		favCuisine = request.form['cuisine']
+		locationId = request.form['location']
+		likes = 0
+		points = 0
+		wallet = 0
+		if password == confpass:
+			fullname = firstName+' '+lastName
+			bmi = float(weight)/(float(height)*float(height))
+			sql = 'INSERT INTO `user_login`(`username`, `password`, `email`, `type`, `full_name`, `BMI`, `height`, `weight`, `phone`, `address`, `cuisine_id`, `location`, `likes`, `points`, `wallet`) VALUES ("%s", MD5("%s"), "%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s")'
+			db.execute(sql%(username, password, email, userType, fullname, bmi, height, weight, phone, addr, favCuisine, locationId, likes, points, wallet))
+			db.execute("COMMIT")
+			print "Success"
+			return redirect(url_for('login'))
+		print "Failed"
+		return redirect(url_for('login'))
+	db = get_cursor()
+	sql = 'select * from cuisine'
+	db.execute(sql)
+	cuisines = db.fetchall()
+	cuisinesList = cuisines
+	db.execute("Commit")
+	return render_template('signup.djt', cuisinesList=cuisinesList)
+
+@app.route('/login', methods= ['GET', 'POST'])
+def login():
+	global store
+	error = None
+	db=get_cursor()
+	session['temp']=0
+	if request.method == 'POST':
+		username = str(request.form['username'])
+		password = str(request.form['password'])
+		sql = 'select * from user_login where username="%s" and password=MD5("%s")'%(username, password)
+		db.execute(sql)
+		result = db.fetchone()
+		if not result:
+			error = "Invalid username and password"
+		else:
+			session['logged_in'] = True
+			app.config['USERNAME'] = username
+			return redirect(url_for('dashboard'))
+	return render_template('login.djt')
+
 @app.teardown_appcontext
 def close_db(self):
 	"""Closes the database again at the end of the request."""
 	get_cursor().close()
+
+@app.route('/logout')
+def logout():
+	if g.user is not None:
+		twitterlogout()
+	if session['logged_in'] != None:
+		if session['logged_in']==True:
+			session.pop('logged_in', None)
+			session.pop('temp',0)
+		else:
+			flash('Welcome Back!')
+	return redirect(url_for('login'))#show_entries.html
+
+@app.route('/twitter')
+def index():
+	tweets = None
+	if g.user is not None:
+		resp = twitter.request('statuses/home_timeline.json')
+		if resp.status == 200:
+			tweets = resp.data
+			pprint(tweets)
+		else:
+			flash('Unable to load tweets from Twitter.')
+	db = get_cursor()
+	sql = 'select * from user_login where username="%s"'%app.config['USERNAME']
+	db.execute(sql)
+	names = db.fetchone()
+	imageUrl = hashlib.md5(names[2]).hexdigest()
+	return render_template('dashboard.djt', tweets=tweets, names=names, imageUrl=imageUrl)
+
+@app.route('/tweet', methods=['POST'])
+def tweet():
+	if g.user is None:
+		return redirect(url_for('twitterlogin', next=request.url))
+	status = request.form['tweet']
+	if not status:
+		return redirect(url_for('index'))
+	resp = twitter.post('statuses/update.json', data={
+		'status': status
+	})
+	if resp.status == 403:
+		flash('Your tweet was too long.')
+	elif resp.status == 401:
+		flash('Authorization error with Twitter.')
+	else:
+		flash('Successfully tweeted your tweet (ID: #%s)' % resp.data['id'])
+	index()
+	return redirect(url_for('twitter'))
+
+
+@app.route('/twitterlogin')
+def twitterlogin():
+	callback_url = url_for('oauthorized', next=request.args.get('next'))
+	return twitter.authorize(callback=callback_url or request.referrer or None)
+
+
+@app.route('/twitterlogout')
+def twitterlogout():
+	session.pop('twitter_oauth', None)
+	return redirect(url_for('index'))
+
+
+@app.route('/oauthorized')
+def oauthorized():
+	resp = twitter.authorized_response()
+	if resp is None:
+		flash('You denied the request to sign in.')
+	else:
+		session['twitter_oauth'] = resp
+	return redirect(url_for('index'))
 
 if __name__ == '__main__':
 	app.debug = True

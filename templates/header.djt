@@ -48,7 +48,35 @@
             <span class="sr-only">Toggle navigation</span>
           </a>
           <div class="navbar-custom-menu">
-            
+            <ul class="nav navbar-nav">
+              <!-- User Account: style can be found in dropdown.less -->
+              {% if names is defined %}
+              <li class="dropdown user user-menu">
+                <a href="#" class="dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
+                  <img src="http://www.gravatar.com/avatar/{{imageUrl}}?&d=identicon" class="user-image" alt="User Image">
+                  <span class="hidden-xs">{{names[4]}}</span>
+                </a>
+                <ul class="dropdown-menu">
+                  <!-- User image -->
+                  <li class="user-header">
+                    <img src="http://www.gravatar.com/avatar/{{imageUrl}}?&d=identicon" class="img-circle" alt="User Image">
+                    <p>
+                      {{names[4]}}
+                    </p>
+                  </li>
+                  <!-- Menu Footer-->
+                  <li class="user-footer">
+                    <div class="pull-left">
+                      <a href="#" class="btn btn-default btn-flat">Profile</a>
+                    </div>
+                    <div class="pull-right">
+                      <a href="/logout" class="btn btn-default btn-flat">Sign out</a>
+                    </div>
+                  </li>
+                </ul>
+              </li>
+              {% endif %}
+            </ul>
           </div>
         </nav>
       </header>
