@@ -10,8 +10,9 @@
 <div class="content-wrapper" style="background-color:#DDDDDD;">
 	<section class="content-header">
 	</section>
-  <section class="content">
-    <div class="row"></div>
+  <section class="content" style="padding:0px 0px 0px 0px;">
+      <!-- <img src="{{ url_for('static', filename='images/6.jpg') }}" alt="Image 1" style="margin-top:-30px;padding:0px 0px 0px 0px;"> -->
+      
   </section>
 </div>
 {% endblock %}
