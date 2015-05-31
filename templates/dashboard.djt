@@ -12,6 +12,7 @@
 	</section>
   <section class="content">
   	<div class="row" style="text-align:center;">
+  		{% if names is defined %}
   		{% if imageUrl is defined %}
   		<img src="http://www.gravatar.com/avatar/{{imageUrl}}?&d=identicon" alt="" height="200" width="200" style="border-radius:50%;">
   		{% endif %}
@@ -25,6 +26,8 @@
       	</a>
       	</div>
       	{% endif %}
+      	{% endif %}
+      	{{session}}
   	</div>
   	{% if tweets is defined %}
         <div class="row">

@@ -28,7 +28,7 @@ SET time_zone = "+00:00";
 
 CREATE TABLE IF NOT EXISTS `bills` (
   `bill_no` int(10) NOT NULL,
-  `res_id` int(10) DEFAULT NULL,
+  `res_id` varchar(10000) DEFAULT NULL,
   `order_id` int(10) DEFAULT NULL,
   `cuisine_id` int(10) DEFAULT NULL,
   `loc_id` int(10) DEFAULT NULL

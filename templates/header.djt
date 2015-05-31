@@ -92,6 +92,26 @@
                 <i class="fa fa-dashboard"></i> <span>Home</span>
               </a>
             </li>
+            <li class="treeview">
+              <a href="/submitbill">
+                <i class="fa fa-dashboard"></i> <span>Submit Bill</span>
+              </a>
+            </li>
+            <li class="treeview">
+              <a href="/leaderboard">
+                <i class="fa fa-grid"></i> <span>Leaderboard</span>
+              </a>
+            </li>
+            <li class="treeview">
+              <a href="/placeorder">
+                <i class="fa fa-dashboard"></i> <span>Place Order</span>
+              </a>
+            </li>
+            <li class="treeview">
+              <a href="/insights">
+                <i class="fa fa-dashboard"></i> <span>Interesting Insights</span>
+              </a>
+            </li>
           </ul>
         </section>
         <!-- /.sidebar -->

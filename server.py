@@ -15,7 +15,7 @@ import re, datetime
 import urllib2, urllib
 import requests, chartkick
 from flask_oauthlib.client import OAuth
-import hashlib
+import hashlib, random
  
 import logging
 from logging.handlers import SMTPHandler
@@ -45,6 +45,15 @@ ck = Blueprint('ck_page', __name__, static_folder=chartkick.js(), static_url_pat
 app.register_blueprint(ck, url_prefix='/ck')
 app.jinja_env.add_extension("chartkick.ext.charts")
 
+UPLOAD_FOLDER = 'uploads/'
+ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'])
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+def allowed_file(filename):
+	return '.' in filename and \
+		filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
+
 oauth = OAuth(app)
 
 from twitter import CONSUMER_KEY, CONSUMER_SECRET
@@ -59,6 +68,9 @@ twitter = oauth.remote_app(
 	authorize_url='https://api.twitter.com/oauth/authorize',
 )
 
+@app.route('/uploads/<filename>')
+def uploaded_file(filename):
+	return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 @twitter.tokengetter
 def get_twitter_token():
@@ -82,20 +94,98 @@ def get_cursor():
 
 oauth = OAuth(app)
 
+IDOLONDEMAND_OCR_API = "http://api.idolondemand.com/1/api/sync/{}/v1"
+apikey = "3687467a-ce51-4ced-8692-cebb5ce5ea0c"
+
+def postrequests(function,data={},files={}):
+	data["apikey"]=apikey
+	callurl=IDOLONDEMAND_OCR_API.format(function)
+	r=requests.post(callurl,data=data,files=files)
+	return r.json()
+
 @app.errorhandler(404)
 def page_not_found(e):
 	return render_template('404.djt'), 404
+
+@app.route('/leaderboard', methods=['GET'])
+def leaderboard():
+	db = get_cursor()
+	sql = 'select * from user_login join cuisine on cuisine.cuisine_id = user_login.cuisine_id order by points desc'
+	db.execute(sql)
+	values = db.fetchall()
+	pprint(values)
+	cuisines = []
+	location = []
+	for Object in values:
+		cuisines.append(Object[16])
+		location.append(Object[11])
+	cuisinesCounter = dict(list(Counter(cuisines).iteritems()))
+	locationCounter = dict(list(Counter(location).iteritems()))
+	pprint(cuisinesCounter)
+	pprint(locationCounter)
+	cusinesList = {}
+	locationList = {}
+	for key, value in locationCounter.iteritems():
+		cusinesList[str(key)] = value
+	for key, value in cuisinesCounter.iteritems():
+		locationList[str(key)] = value
+	pprint(cusinesList)
+	return render_template('leaderboard.djt', cusinesList=cusinesList, locationList=locationList, values=values)
 
 @app.route('/')
 def screen():
 	return render_template('index.djt')
 
-# @app.route('/placeorder')
-# def placeorder():
+@app.route('/placeorder', methods=['GET', 'POST'])
+def placeorder():
+	if request.method == 'POST':
+		return render_template('query.djt')
+
+
+@app.route('/submitbill', methods = ['GET', 'POST'])
+def submitbill():
+	if request.method == 'POST':
+		file = request.files['file']
+		queryText = request.form['bill']
+		if file and allowed_file(file.filename):
+			filename = secure_filename(file.filename)
+			file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+			filepath = 'uploads/'+filename
+			result=postrequests('ocrdocument',data={'mode':'photo'},files={'file': open(filepath,'rb')})
+			text = result['text_block'][0]['text']
+			if queryText in text:
+				mesg = "Yay ! You've made it for today."
+				db = get_cursor()
+				sql = 'insert into `bills` (`bill_no`,`res_id`,`order_id`,`cuisine_id`,`loc_id`) VALUES ("%s","%s","%s","%s","%s")'%(queryText,text,queryText,random.randint(1,23),random.randint(1,100))
+				db.execute(sql)
+				updatePoints = 'update user_login set points=points+10 where username = "%s"'%app.config['USERNAME']
+				db.execute(updatePoints)
+				db.execute("COMMIT")
+			else:
+				mesg = None
+			return render_template('success.djt', mesg=mesg, text=text, filename=filename)
+	return render_template('billupload.djt')
 
 @app.route('/restaurant/<id>')
 def restaurant(id=None):
 	return render_template('restaurant.djt')
+
+@app.route('/restaurantLogin', methods=['GET', 'POST'])
+def restaurantLogin():
+	if request.method == 'POST':
+		db = get_cursor()
+		res_id = request.form['res_id']
+		password = request.form['password']
+		print res_id, password
+		sql = 'select * from restaurant where res_id LIKE "%s" and password LIKE MD5("%s")'%(str(res_id), str(password))
+		db.execute(sql)
+		result = db.fetchone()
+		if not result:
+			return redirect(url_for('screen'))
+		session['logged_in'] = True
+		app.config['USERNAME'] = res_id
+		return render_template('dashboard.djt')
+	return render_template('restaurantLogin.djt')
 
 @app.route('/registerRestaurant', methods=['GET', 'POST'])
 def registerRestaurant():
