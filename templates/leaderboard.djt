@@ -18,6 +18,10 @@
 			<div class="col-lg-4">
 				{% pie_chart locationList %}
 				{% pie_chart cusinesList %}
+				{% pie_chart restaurantList %}
+				{% column_chart userList %}
+				{% pie_chart locationOrderList %}
+				{% pie_chart cuisineOrderList %}
 			</div>
 			<div class="col-lg-8">
 				<div class="box">

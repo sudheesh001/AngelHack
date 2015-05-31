@@ -113,8 +113,8 @@ INSERT INTO `menu` (`item_id`, `res_id`, `cuisine_id`, `item_name`, `price`, `im
 --
 
 CREATE TABLE IF NOT EXISTS `orders` (
-  `order_id` int(10) DEFAULT NULL,
-  `item_id` int(10) DEFAULT NULL
+  `order_id` varchar(10) DEFAULT NULL,
+  `item_id` varchar(10) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 -- --------------------------------------------------------
@@ -126,9 +126,9 @@ CREATE TABLE IF NOT EXISTS `orders` (
 CREATE TABLE IF NOT EXISTS `restaurant` (
   `res_id` varchar(11) NOT NULL,
   `res_name` varchar(255) NOT NULL,
-  `location` varchar(255) NOT NULL,
-  `city` varchar(255) NOT NULL,
-  `state` varchar(255) NOT NULL,
+  `location` varchar(255) NULL,
+  `city` varchar(255) NULL,
+  `state` varchar(255) NULL,
   `status` varchar(1) NOT NULL,
   `rating` varchar(11) NOT NULL,
   `serv_type` varchar(255) NOT NULL,

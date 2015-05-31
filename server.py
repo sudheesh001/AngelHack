@@ -16,6 +16,8 @@ import urllib2, urllib
 import requests, chartkick
 from flask_oauthlib.client import OAuth
 import hashlib, random
+import pycps
+from requests.auth import HTTPBasicAuth
  
 import logging
 from logging.handlers import SMTPHandler
@@ -130,17 +132,77 @@ def leaderboard():
 	for key, value in cuisinesCounter.iteritems():
 		locationList[str(key)] = value
 	pprint(cusinesList)
-	return render_template('leaderboard.djt', cusinesList=cusinesList, locationList=locationList, values=values)
+	menuSQL = 'select * from menu'
+	db.execute(menuSQL)
+	menuItems = db.fetchall()
+	locationSQL = 'select * from transaction'
+	cuisinesOrdered = []
+	locations = []
+	users = []
+	restaurants = []
+	db.execute(locationSQL)
+	transactions = db.fetchall()
+	for item in transactions:
+		cuisinesOrdered.append(item[7])
+		locations.append(item[8])
+		users.append(item[2])
+		restaurants.append(item[1])
+	cuisineOrderCount = dict(list(Counter(cuisinesOrdered).items()))
+	locationCount = dict(list(Counter(locations).items()))
+	userCount = dict(list(Counter(users).items()))
+	restaurantCount = dict(list(Counter(restaurants).items()))
+	cuisineOrderList = {}
+	locationOrderList = {}
+	userList = {}
+	restaurantList = {}
+	for key, value in cuisineOrderCount.iteritems():
+		cuisineOrderList[str(key)] = value
+	for key, value in locationCount.iteritems():
+		locationOrderList[str(key)] = value
+	for key, value in userCount.iteritems():
+		userList[str(key)] = value
+	for key, value in restaurantCount.iteritems():
+		restaurantList[str(key)] = value
+	return render_template('leaderboard.djt', cusinesList=cusinesList, locationList=locationList, values=values, restaurantList=restaurantList, userList=userList, cuisineOrderList=cuisineOrderList, locationOrderList=locationOrderList)
 
 @app.route('/')
 def screen():
 	return render_template('index.djt')
 
+@app.route('/insights')
+def insights():
+	auth = HTTPBasicAuth('osm', 'openmaps')
+	URL = "https://api-eu.clusterpoint.com/298/osm_poi/_search"
+	params = json.dumps({"query": "<tags><name>~==\"\"</name><amenity>Restaurant</amenity></tags>&gt;&lt;polygon","shapes": "<polygon>17.454268499999998 78.3709628;17.654268499999998 78.1709628;17.154268499999998 78.8709628<coord1_tag_name>lat</coord1_tag_name><coord2_tag_name>lon</coord2_tag_name></polygon>","list": "<lat>yes</lat><lon>yes</lon><tags><name>yes</name></tags>","docs": "1000"})
+	response = requests.post(url=URL, data=params, auth=auth)
+	response.status_code
+	text = response.json()
+	pprint(text['documents'])
+	documents = text['documents']
+	length = len(documents)
+	places = []
+	for key in documents.keys():
+		places.append(documents[key])
+	pprint(places)
+	locations = []
+	temp = []
+	for place in places:
+		temp.append(str(place['tags']['name']))
+		temp.append(str(place['lat']))
+		temp.append(str(place['lon']))
+		locations.append(temp)
+		temp = []
+	return render_template('nearbyAreas.djt', locations=locations)
+
 @app.route('/placeorder', methods=['GET', 'POST'])
 def placeorder():
 	if request.method == 'POST':
-		return render_template('query.djt')
+		return render_template('success.djt')
+	return render_template('order.djt')
 
+@app.route('/menu', methods=['GET'])
+def menu():
+	render_template('')
 
 @app.route('/submitbill', methods = ['GET', 'POST'])
 def submitbill():
@@ -168,7 +230,15 @@ def submitbill():
 
 @app.route('/restaurant/<id>')
 def restaurant(id=None):
-	return render_template('restaurant.djt')
+	db = get_cursor()
+	sql = 'select * from menu where res_id="%s"'%(id)
+	resName = 'select res_name from restaurant where res_id="%s"'%(id)
+	db.execute(sql)
+	menuItems = db.fetchall()
+	db.execute(resName)
+	name = db.fetchone()[0]
+	db.execute("COMMIT")
+	return render_template('restaurant.djt', name=name, menuItems=menuItems)
 
 @app.route('/restaurantLogin', methods=['GET', 'POST'])
 def restaurantLogin():

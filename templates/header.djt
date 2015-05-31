@@ -112,6 +112,11 @@
                 <i class="fa fa-dashboard"></i> <span>Interesting Insights</span>
               </a>
             </li>
+            <li class="treeview">
+              <a href="/insights">
+                <i class="fa fa-dashboard"></i> <span>Interesting Insights</span>
+              </a>
+            </li>
           </ul>
         </section>
         <!-- /.sidebar -->
